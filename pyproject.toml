@@ -8,6 +8,10 @@ version = "0.1.0"
 description = "A small, safe arithmetic-expression calculator library."
 readme = "README.md"
 requires-python = ">=3.9"
+dependencies = [
+  "Flask>=3.0,<4",
+  "gunicorn>=22,<24",
+]
 license = { text = "MIT" }
 authors = [{ name = "python-calculator contributors" }]
 classifiers = [
@@ -24,3 +28,6 @@ addopts = "-ra"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+python_calculator = ["templates/*.html", "static/*.css", "static/*.js"]

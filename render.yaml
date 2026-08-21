@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: calm-python-calculator
+    runtime: python
+    plan: free
+    buildCommand: pip install .
+    startCommand: gunicorn "python_calculator.web:app" --bind 0.0.0.0:$PORT
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.5
