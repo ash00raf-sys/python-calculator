@@ -63,6 +63,18 @@ curl -X POST http://127.0.0.1:5000/api/calculate \
 The included [`render.yaml`](render.yaml) Blueprint configures a free Render
 web service with Gunicorn and a `/health` health check.
 
+### Static.app
+
+The calculator also evaluates expressions safely in the browser, so it can run
+without a Python server on static hosting. Build an upload-ready Static.app ZIP:
+
+```bash
+python scripts/build_static.py
+```
+
+Upload `.artifacts/calm-calculator-static.zip` at <https://static.app>. The
+archive has `index.html` at its root as required by drag-and-drop hosting.
+
 ## Development
 
 Run the tests:

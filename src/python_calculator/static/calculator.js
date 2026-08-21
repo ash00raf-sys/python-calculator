@@ -83,23 +83,115 @@
     copyButton.disabled = !result;
   }
 
+  function calculateLocally(expression) {
+    if (expression.length > 1000) throw new Error("That expression is too long.");
+
+    let position = 0;
+    let operations = 0;
+
+    function fail(message = "Invalid arithmetic expression.") {
+      throw new Error(message);
+    }
+
+    function skipSpaces() {
+      while (/\s/.test(expression[position] || "")) position += 1;
+    }
+
+    function consume(character) {
+      skipSpaces();
+      if (expression[position] !== character) return false;
+      position += 1;
+      return true;
+    }
+
+    function countOperation() {
+      operations += 1;
+      if (operations > 1000) fail("That expression is too complex.");
+    }
+
+    function parseNumber() {
+      skipSpaces();
+      const match = expression.slice(position).match(/^(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?/);
+      if (!match) fail();
+      position += match[0].length;
+      return Number(match[0]);
+    }
+
+    function parsePrimary(depth) {
+      if (depth > 200) fail("That expression is too deeply nested.");
+      if (consume("(")) {
+        const value = parseExpression(depth + 1);
+        if (!consume(")")) fail("A closing parenthesis is missing.");
+        return value;
+      }
+      return parseNumber();
+    }
+
+    function parseUnary(depth) {
+      if (consume("+")) {
+        countOperation();
+        return parseUnary(depth + 1);
+      }
+      if (consume("-")) {
+        countOperation();
+        return -parseUnary(depth + 1);
+      }
+      return parsePrimary(depth);
+    }
+
+    function parseTerm(depth) {
+      let value = parseUnary(depth);
+      while (true) {
+        if (consume("*")) {
+          countOperation();
+          value *= parseUnary(depth);
+        } else if (consume("/")) {
+          countOperation();
+          const divisor = parseUnary(depth);
+          if (divisor === 0) fail("Cannot divide by zero.");
+          value /= divisor;
+        } else {
+          return value;
+        }
+      }
+    }
+
+    function parseExpression(depth = 0) {
+      let value = parseTerm(depth);
+      while (true) {
+        if (consume("+")) {
+          countOperation();
+          value += parseTerm(depth);
+        } else if (consume("-")) {
+          countOperation();
+          value -= parseTerm(depth);
+        } else {
+          return value;
+        }
+      }
+    }
+
+    if (!expression.trim()) fail("Enter something to calculate.");
+    const value = parseExpression();
+    skipSpaces();
+    if (position !== expression.length) fail("Use only numbers, parentheses, +, −, ×, and ÷.");
+    if (!Number.isFinite(value)) return value > 0 ? "∞" : "−∞";
+    if (Object.is(value, -0)) return "0";
+    return Number.parseFloat(value.toPrecision(15)).toString();
+  }
+
   async function requestCalculation(expression, { final = false } = {}) {
     const requestId = ++requestCounter;
 
     try {
-      const response = await fetch("/api/calculate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ expression }),
-      });
-      const payload = await response.json();
+      // Yield once so rapid input can supersede a stale live calculation.
+      await Promise.resolve();
+      const result = calculateLocally(expression);
 
       if (requestId !== requestCounter) return null;
-      if (!response.ok) throw new Error(payload.error || "Something went wrong.");
-
-      setResult(payload.result);
+      setResult(result);
       setMessage(final ? "Calculation saved to your tape" : "Live result", "success");
-      return payload.result;
+      return result;
     } catch (error) {
       if (requestId !== requestCounter) return null;
       if (final) {
